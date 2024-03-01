@@ -6,3 +6,6 @@ stepan_answers.json
 
 # Ignore the images folder (replace "images" with your actual folder name)
 images/
+
+# Ignore the DS_Store file
+.DS_Store

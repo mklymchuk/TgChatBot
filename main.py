@@ -8,7 +8,7 @@ filename = 'bot_token.txt'
 
 with open(filename) as f:
     api_token = f.read()
-    
+
 # Load data from JSON file
 with open('stepan_answers.json') as f:
     stepan_answers = json.load(f)
@@ -19,7 +19,7 @@ bot = telebot.TeleBot(api_token)
 def send_help(message):
     bot.reply_to(message, "I am a bot, I can help you with some stuff")
     bot.reply_to(message, "You can use the following commands: /stepan, /greet, /go, /help")
-
+    
 @bot.message_handler(commands=['stepan','Stepan'])
 def send_stepan_answers(message):
     random_key = random.choice(list(stepan_answers.keys()))
@@ -27,17 +27,27 @@ def send_stepan_answers(message):
     
     if isinstance(random_answer, list):
         for item in random_answer:
-            send_message_with_image(message, item)
+            if 'image' in item and 'image_path' in item and item['image']:
+                send_message_with_image(message, item)
+            elif 'speaker' in item and 'message' in item:
+                send_text_message(message, item)
     else:
-        send_message_with_image(message, random_answer)
+        if 'image' in random_answer and 'image_path' in random_answer and random_answer['image']:
+            send_message_with_image(message, random_answer)
+        elif 'speaker' in random_answer and 'message' in random_answer:
+            send_text_message(message, random_answer)
 
-def send_message_with_image(message, answer):
-    speaker = answer.get('speaker')
-    message_text = answer.get('message')
-    image_path = answer.get('message')  # Assuming image path is in the 'message' field
+def send_text_message(message, answer):
+    speaker = answer.get('speaker', '')
+    message_text = answer.get('message', '')
 
     if speaker:
         bot.reply_to(message, f"{speaker}: \"{message_text}\"")
+    else:
+        bot.reply_to(message, message_text)
+
+def send_message_with_image(message, answer):
+    image_path = answer.get('image_path', '')
 
     if image_path:
         # Construct the absolute path to the image
@@ -46,11 +56,16 @@ def send_message_with_image(message, answer):
 
         # Check if the file exists
         if os.path.exists(image_full_path):
-            # Open the file and send it as photo
+            # Open the file and send it as a photo
             with open(image_full_path, 'rb') as photo:
-                bot.send_photo(message.chat.id, photo, caption=message_text)
+                bot.send_photo(message.chat.id, photo)
         else:
-            bot.reply_to(message, "Image file not found.")
+            # Send a default image instead
+            with open('images/default_image.jpg', 'rb') as default_image:
+                bot.send_photo(message.chat.id, default_image)
+    else:
+        # Handle the case where no image_path is provided
+        bot.reply_to(message, "Image file not found.")
 
 @bot.message_handler(commands=['greet','Greet'])
 def greet(message):
@@ -86,5 +101,5 @@ def handle_poll(poll):
     
     bot.send_message(chat_id, 'Poll results: {}'.format(str(poll.options)))
 
-# Remove the redundant bot.polling() call
+# Start the bot
 bot.polling(none_stop=True)
