@@ -1,0 +1,8 @@
+# Ignore the bot_token.txt file
+bot_token.txt
+
+# Ignore the stepan_answers.json file
+stepan_answers.json
+
+# Ignore the images folder (replace "images" with your actual folder name)
+images/
