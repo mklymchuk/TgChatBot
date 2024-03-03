@@ -9,3 +9,6 @@ images/
 
 # Ignore the DS_Store file
 .DS_Store
+
+# Ignore users_to_call.csv
+users_to_call.csv
