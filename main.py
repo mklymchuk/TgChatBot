@@ -5,7 +5,8 @@ import csv
 import time
 import telebot
 from telebot.types import Poll, PollOption
-from telebot.types import ReplyKeyboardMarkup, KeyboardButton
+
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 filename = 'bot_token.txt'
 
@@ -17,49 +18,39 @@ with open(filename) as f:
 with open('stepan_answers.json') as f:
     stepan_answers = json.load(f)
 
+# Load admin user ID from file
+filename = 'user_id.txt'
+with open(filename) as f:
+    YOUR_TELEGRAM_USER_ID = int(f.read())
+    
+# Create a bot instance
 bot = telebot.TeleBot(api_token)
 
-# Define a menu markup
-menu_markup = ReplyKeyboardMarkup(resize_keyboard=True)
-
-# Define menu options
-menu_options = ['Stepan', 'Hello', 'Go', 'Help']
-
-# Add menu options to markup
-for option in menu_options:
-    menu_markup.add(KeyboardButton(option))
-
-# Handle the /start command
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    bot.reply_to(message, "Welcome to ChatSTPT! How can I assist you?", reply_markup=menu_markup)
-
-# Handle the menu options
-@bot.message_handler(func=lambda message: message.text in menu_options)
-def handle_menu(message):
-    option = message.text.lower()
-    if option == 'stepan':
-        send_stepan_answers(message)
-    elif option == 'hello':
-        greet(message)
-    elif option == 'go':
-        send_poll(message)
-    elif option == 'help':
-        send_help(message)
-        
-# Handle the /menu command
+# Command to show the menu with callback buttons
 @bot.message_handler(commands=['menu', 'Menu'])
 def show_menu(message):
-    bot.send_message(message.chat.id, "Here are the menu options:", reply_markup=menu_markup)
+    keyboard = InlineKeyboardMarkup()
+    keyboard.row(InlineKeyboardButton('Stepan', callback_data='stepan'))
+    keyboard.row(InlineKeyboardButton('Hello', callback_data='hello'))
+    keyboard.row(InlineKeyboardButton('Go', callback_data='go'))
+    keyboard.row(InlineKeyboardButton('Help', callback_data='help'))
 
-# Handle the /help command
-@bot.message_handler(commands=['help', 'Help'])
-def send_help(message):
-    bot.reply_to(message, "Це ChatSTPT, блять! Якщо ти не знаєш, що робити, то пішов нахуй!")
-    bot.reply_to(message, "Ось тобі команди, що ти знав що робити: /stepan, /hello, /go, /help")
-    
-# Stepan comand generates random answers from the JSON file
-@bot.message_handler(commands=['stepan','Stepan'])
+    bot.send_message(message.chat.id, 'Меню:', reply_markup=keyboard)
+
+# Handler for callback queries
+@bot.callback_query_handler(func=lambda call: True)
+def handle_callback_query(call):
+    if call.data == 'stepan':
+        send_stepan_answers(call.message)
+    elif call.data == 'hello':
+        greet(call.message)
+    elif call.data == 'go':
+        send_poll(call.message)
+    elif call.data == 'help':
+        send_help(call.message)
+        
+# Stepan command generates random answers from the JSON file
+@bot.message_handler(commands=['stepan', 'Stepan'])
 def send_stepan_answers(message):
     random_key = random.choice(list(stepan_answers.keys()))
     random_answer = stepan_answers[random_key]
@@ -107,11 +98,24 @@ def send_message_with_image(message, answer):
     else:
         # Handle the case where no image_path is provided
         bot.reply_to(message, "Image file not found.")
+        
+# Command to provide help
+@bot.message_handler(commands=['help', 'Help'])
+def send_help(message):
+    bot.reply_to(message, "Ось командни, блеть /menu /stepan, /hello, /go.")
 
-# 
-@bot.message_handler(commands=['hello','Hello'])
+# Command to greet
+@bot.message_handler(commands=['hello', 'Hello'])
 def greet(message):
     bot.reply_to(message, "Єбеть")
+
+# Command to send a poll
+@bot.message_handler(commands=['go', 'Go'])
+def send_poll(message):
+    options = [PollOption('Go'), PollOption('Ne go'), PollOption('Za try godyny go')]
+    poll = bot.send_poll(message.chat.id, 'Go?', options, is_anonymous=False)
+    print_usernames(message)
+    print(poll)
 
 def print_usernames(message):
     # List of usernames you want to mention
@@ -129,13 +133,6 @@ def call_usernames():
     with open(filename) as f:
         usernames_to_mention = f.read().splitlines()
         return usernames_to_mention
-
-@bot.message_handler(commands=['go', 'Go'])
-def send_poll(message):
-    options = [PollOption('Go'), PollOption('Ne go'), PollOption('Za try godyny go')]
-    poll = bot.send_poll(message.chat.id, 'Go?', options, is_anonymous=False)
-    print_usernames(message)
-    print(poll)
 
 @bot.poll_handler(func=lambda poll: True)
 def handle_poll(poll):
@@ -170,39 +167,21 @@ def handle_message(message):
         # Check if the cooldown period has elapsed
         if current_time - last_action_time[user_id] < cooldown_period:
             # Send a message indicating the cooldown period
-            bot.reply_to(message, f"Please wait {cooldown_period} seconds before sending another message or command.")
+            bot.reply_to(message, f"Почекай, блеть {cooldown_period}.")
             return
 
     # Update the last action timestamp for the user
     last_action_time[user_id] = current_time
-
-    # Your message handling logic goes here
-    bot.reply_to(message, "Your message has been received.")
-
-# Handle commands separately
-@bot.message_handler(commands=['start', 'help', 'stepan', 'Stepan', 'hello', 'Hello', 'go', 'Go', 'poll', 'Poll'])
-def handle_commands(message):
-    global last_action_time
-
-    # Get the user ID
-    user_id = message.from_user.id
-
-    # Get the current time
-    current_time = time.time()
-
-    # Check if the user has sent a message or command before
-    if user_id in last_action_time:
-        # Check if the cooldown period has elapsed
-        if current_time - last_action_time[user_id] < cooldown_period:
-            # Send a message indicating the cooldown period
-            bot.reply_to(message, f"Please wait {cooldown_period} seconds before sending another message or command.")
-            return
-
-    # Update the last action timestamp for the user
-    last_action_time[user_id] = current_time
-
-    # Your command handling logic goes here
-    bot.reply_to(message, "Your command has been received.")
     
+    # Your message handling logic goes here
+    if message.text.lower() in ['/stop', '/end']:
+        # Check if the user is authorized to stop the bot
+        if message.from_user.id == YOUR_TELEGRAM_USER_ID:
+            bot.reply_to(message, "Stopping the bot...")
+            # Stop the bot process
+            os.kill(os.getpid(), 9)
+        else:
+            bot.reply_to(message, "You are not authorized to stop the bot.")
+
 # Start the bot
 bot.polling(none_stop=True)

@@ -12,3 +12,6 @@ images/
 
 # Ignore users_to_call.csv
 users_to_call.csv
+
+# Ignore user_id.txt
+user_id.txt
