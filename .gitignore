@@ -15,3 +15,6 @@ users_to_call.csv
 
 # Ignore user_id.txt
 user_id.txt
+
+# Ignore giphy API key
+giphy_api_key.py

@@ -3,10 +3,13 @@ import random
 import json
 import csv
 import time
+import requests
 import telebot
 from telebot.types import Poll, PollOption
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+from giphy_api_key import GIPHY_API_KEY
 
 filename = 'bot_token.txt'
 
@@ -31,6 +34,7 @@ bot = telebot.TeleBot(api_token)
 def show_menu(message):
     keyboard = InlineKeyboardMarkup()
     keyboard.row(InlineKeyboardButton('Stepan', callback_data='stepan'))
+    keyboard.row(InlineKeyboardButton('Gif', callback_data='gif'))
     keyboard.row(InlineKeyboardButton('Hello', callback_data='hello'))
     keyboard.row(InlineKeyboardButton('Go', callback_data='go'))
     keyboard.row(InlineKeyboardButton('Help', callback_data='help'))
@@ -42,6 +46,8 @@ def show_menu(message):
 def handle_callback_query(call):
     if call.data == 'stepan':
         send_stepan_answers(call.message)
+    elif call.data == 'gif':
+        send_random_gif(call.message)
     elif call.data == 'hello':
         greet(call.message)
     elif call.data == 'go':
@@ -99,10 +105,41 @@ def send_message_with_image(message, answer):
         # Handle the case where no image_path is provided
         bot.reply_to(message, "Image file not found.")
         
+# Command handler for /gif command
+@bot.message_handler(commands=['gif', 'Gif'])
+def send_random_gif(message):
+    api_key = GIPHY_API_KEY  # Replace with your Giphy API key
+    
+    # Get the tag from the user's message
+    tag = message.text.split(' ', 1)[1] if len(message.text.split(' ', 1)) > 1 else 'monkey'
+
+    try:
+        # URL for Giphy API to get a random GIF with the specified tag
+        url = f"https://api.giphy.com/v1/gifs/random?api_key={api_key}&tag={tag}"
+
+        # Make API request to Giphy
+        response = requests.get(url)
+
+        # Parse JSON response
+        data = response.json()
+
+        # Check if the response contains data
+        if 'data' in data:
+            gif_url = data['data']['images']['original']['url']
+
+            # Send the GIF directly in the message
+            bot.send_animation(message.chat.id, gif_url)
+        else:
+            bot.send_message(message.chat.id, "Sorry, couldn't find a GIF with that tag.")
+
+    except Exception as e:
+        # Handle any errors
+        bot.send_message(message.chat.id, "Такого тегу немає. Спробуй щось інше")
+
 # Command to provide help
 @bot.message_handler(commands=['help', 'Help'])
 def send_help(message):
-    bot.reply_to(message, "Ось командни, блеть /menu /stepan, /hello, /go.")
+    bot.reply_to(message, "Ось командни, блеть /menu /stepan, /hello, /go /gif.")
 
 # Command to greet
 @bot.message_handler(commands=['hello', 'Hello'])
@@ -167,7 +204,7 @@ def handle_message(message):
         # Check if the cooldown period has elapsed
         if current_time - last_action_time[user_id] < cooldown_period:
             # Send a message indicating the cooldown period
-            bot.reply_to(message, f"Почекай, блеть {cooldown_period}.")
+            bot.reply_to(message, f"Почекай, блеть {cooldown_period} сек.")
             return
 
     # Update the last action timestamp for the user
@@ -181,7 +218,7 @@ def handle_message(message):
             # Stop the bot process
             os.kill(os.getpid(), 9)
         else:
-            bot.reply_to(message, "You are not authorized to stop the bot.")
+            bot.reply_to(message, "Навіть не думай, блеть.")
 
 # Start the bot
 bot.polling(none_stop=True)
