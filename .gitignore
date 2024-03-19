@@ -18,3 +18,9 @@ user_id.py
 
 # Ignore giphy API key
 giphy_api_key.py
+
+# Ignore .DS_Store
+.DS_Store
+
+# Ignore
+__pycache__/
