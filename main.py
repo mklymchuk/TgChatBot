@@ -1,37 +1,27 @@
 import os
 import random
 import json
-import csv
 import time
 import requests
 import telebot
-from telebot.types import Poll, PollOption
-
+from telebot.types import PollOption
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from giphy_api_key import GIPHY_API_KEY
-
-filename = 'bot_token.txt'
-
-# Load API token from file
-with open(filename) as f:
-    api_token = f.read()
+from bot_token import TG_BOT_API_TOCKEN
+from user_id import YOUR_TELEGRAM_USER_ID
 
 # Load data from JSON file
 with open('stepan_answers.json') as f:
     stepan_answers = json.load(f)
-
-# Load admin user ID from file
-filename = 'user_id.txt'
-with open(filename) as f:
-    YOUR_TELEGRAM_USER_ID = int(f.read())
     
 # Create a bot instance
-bot = telebot.TeleBot(api_token)
+bot = telebot.TeleBot(TG_BOT_API_TOCKEN)
 
 # Command to show the menu with callback buttons
 @bot.message_handler(commands=['menu', 'Menu'])
 def show_menu(message):
+    """Show the menu with callback buttons."""
     keyboard = InlineKeyboardMarkup()
     keyboard.row(InlineKeyboardButton('Stepan', callback_data='stepan'))
     keyboard.row(InlineKeyboardButton('Gif', callback_data='gif'))
@@ -44,6 +34,7 @@ def show_menu(message):
 # Handler for callback queries
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback_query(call):
+    """Handle callback queries from the menu."""
     if call.data == 'stepan':
         send_stepan_answers(call.message)
     elif call.data == 'gif':
@@ -58,6 +49,7 @@ def handle_callback_query(call):
 # Stepan command generates random answers from the JSON file
 @bot.message_handler(commands=['stepan', 'Stepan'])
 def send_stepan_answers(message):
+    """Send random answers from the JSON file."""
     random_key = random.choice(list(stepan_answers.keys()))
     random_answer = stepan_answers[random_key]
     
@@ -73,8 +65,8 @@ def send_stepan_answers(message):
         elif 'speaker' in random_answer and 'message' in random_answer:
             send_text_message(message, random_answer)
 
-# Function to send a text message
 def send_text_message(message, answer):
+    """Send a text message."""
     speaker = answer.get('speaker', '')
     message_text = answer.get('message', '')
 
@@ -83,8 +75,8 @@ def send_text_message(message, answer):
     else:
         bot.send_message(message.chat.id, message_text)
 
-# Function to send a message with an image
 def send_message_with_image(message, answer):
+    """Send a message with an image."""
     image_path = answer.get('image_path', '')
 
     if image_path:
@@ -108,9 +100,11 @@ def send_message_with_image(message, answer):
 # Command handler for /gif command
 @bot.message_handler(commands=['gif', 'Gif'])
 def send_random_gif(message):
-    api_key = GIPHY_API_KEY  # Replace with your Giphy API key
+    """Send a random GIF based on the user's tag."""
+    api_key = GIPHY_API_KEY # Your Giphy API key
     
-    # Get the tag from the user's message
+    # Get the tag from the user's message. 
+    # If no tag is provided, use 'monkey' as the default tag
     tag = message.text.split(' ', 1)[1] if len(message.text.split(' ', 1)) > 1 else 'monkey'
 
     try:
@@ -139,22 +133,26 @@ def send_random_gif(message):
 # Command to provide help
 @bot.message_handler(commands=['help', 'Help'])
 def send_help(message):
+    """Send a help message with available commands."""
     bot.reply_to(message, "Ось командни, блеть /menu /stepan, /hello, /go /gif.")
 
 # Command to greet
 @bot.message_handler(commands=['hello', 'Hello'])
 def greet(message):
+    """Greet the user."""
     bot.reply_to(message, "Єбеть")
 
 # Command to send a poll
 @bot.message_handler(commands=['go', 'Go'])
 def send_poll(message):
+    """Send a poll to the chat."""
     options = [PollOption('Go'), PollOption('Ne go'), PollOption('Za try godyny go')]
     poll = bot.send_poll(message.chat.id, 'Go?', options, is_anonymous=False)
     print_usernames(message)
     print(poll)
 
 def print_usernames(message):
+    """Print the usernames of the users in the chat."""
     # List of usernames you want to mention
     usernames_to_mention = call_usernames()
 
@@ -166,6 +164,7 @@ def print_usernames(message):
     bot.send_message(message.chat.id, message_text)
     
 def call_usernames():
+    """Read the usernames from a file and return a list."""
     filename = 'users_to_call.csv'
     with open(filename) as f:
         usernames_to_mention = f.read().splitlines()
@@ -173,6 +172,7 @@ def call_usernames():
 
 @bot.poll_handler(func=lambda poll: True)
 def handle_poll(poll):
+    """Handle poll updates."""
     if hasattr(poll, 'chat'):
         chat_id = poll.chat.id
     elif hasattr(poll, 'message') and hasattr(poll.message, 'chat'):
@@ -191,6 +191,7 @@ cooldown_period = 10  # Adjust this value as needed
 
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
+    """Handle messages and commands with a cooldown period."""
     global last_action_time
 
     # Get the user ID
@@ -210,6 +211,11 @@ def handle_message(message):
     # Update the last action timestamp for the user
     last_action_time[user_id] = current_time
     
+    # Check if the user wants to stop the bot
+    _stop_bot(message)
+            
+def _stop_bot(message):
+    """Stop the bot process."""
     # Your message handling logic goes here
     if message.text.lower() in ['/stop', '/end']:
         # Check if the user is authorized to stop the bot
@@ -218,6 +224,7 @@ def handle_message(message):
             # Stop the bot process
             os.kill(os.getpid(), 9)
         else:
+            # If the user is not authorized, send a warning message
             bot.reply_to(message, "Навіть не думай, блеть.")
 
 # Start the bot

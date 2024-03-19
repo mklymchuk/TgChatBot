@@ -1,5 +1,5 @@
-# Ignore the bot_token.txt file
-bot_token.txt
+# Ignore the bot_token.py file
+bot_token.py
 
 # Ignore the stepan_answers.json file
 stepan_answers.json
@@ -13,8 +13,8 @@ images/
 # Ignore users_to_call.csv
 users_to_call.csv
 
-# Ignore user_id.txt
-user_id.txt
+# Ignore user_id.py
+user_id.py
 
 # Ignore giphy API key
 giphy_api_key.py
